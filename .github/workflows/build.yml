@@ -44,24 +44,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          # Use npm for caching, not yarn
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
-      # Step 4: Cache Node.js modules to speed up subsequent builds.
-      # The cache is invalidated if the lock file changes.
-      - name: Cache node modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            vscode/node_modules
-          key: ${{ runner.os }}-node20-${{ hashFiles('vscode/package.json', 'vscode/yarn.lock') }}
-
-      # Step 5: Apply patches from the 'patches' directory if it exists.
+      # Step 4: Apply patches from the 'patches' directory if it exists.
       - name: Apply patches (if any)
         run: |
           if [ -d patches ] && [ "$(ls -A patches)" ]; then
             quilt push -a || true
           fi
 
-      # Step 6: Generate a version string for this specific build.
+      # Step 5: Generate a version string for this specific build.
       # It's based on the commit SHA to create a unique identifier.
       - name: Set Development Version
         id: version
@@ -71,23 +65,32 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Generated version for this build: $VERSION"
 
-      # Step 7: The main build process for vscode.
+      # Step 6: The main build process for vscode, now using npm.
       - name: Build vscode
         run: |
           cd vscode
           export DISABLE_V8_COMPILE_CACHE=1
           export UV_THREADPOOL_SIZE=4
-          npm i -g node-gyp
-          yarn install --network-concurrency 1
+          
+          # Install dependencies using npm
+          npm install
+          
+          # The logic for temporarily removing and re-adding ripgrep remains
           VSCODE_RIPGREP_VERSION=$(jq -r '.dependencies."@vscode/ripgrep"' package.json)
           mv package.json package.json.orig
           jq 'del(.dependencies."@vscode/ripgrep")' package.json.orig > package.json
-          yarn install
-          yarn add --ignore-scripts "@vscode/ripgrep@${VSCODE_RIPGREP_VERSION}"
+          
+          # Re-run install to remove ripgrep
+          npm install
+          
+          # Add ripgrep back using npm
+          npm install --ignore-scripts "@vscode/ripgrep@${VSCODE_RIPGREP_VERSION}"
+          
           ARCH_ALIAS=linux-x64
-          yarn gulp vscode-reh-web-${ARCH_ALIAS}-min
+          # Run the gulp build task using npx
+          npx gulp vscode-reh-web-${ARCH_ALIAS}-min
 
-      # Step 8: Find the exact path of the build output directory.
+      # Step 7: Find the exact path of the build output directory.
       - name: Find build output
         id: find_output
         run: |
@@ -99,7 +102,7 @@ jobs:
           echo "Build output found at: $BUILD_PATH"
           echo "build_path=$BUILD_PATH" >> $GITHUB_OUTPUT
 
-      # Step 9: Create a compressed tarball of the build output.
+      # Step 8: Create a compressed tarball of the build output.
       - name: Create tarball archive
         run: |
           TARBALL="vscode-reh-web-linux-x64-${{ env.VERSION }}.tar.gz"
@@ -109,8 +112,7 @@ jobs:
           echo "Creating '$TARBALL' from '$BUILD_DIR_NAME' in '$PARENT_DIR'"
           tar czf $TARBALL -C "$PARENT_DIR" "$BUILD_DIR_NAME"
 
-      # Step 10: Upload the tarball as a build artifact.
-      # This allows you to download the result from the workflow run summary page.
+      # Step 9: Upload the tarball as a build artifact.
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
