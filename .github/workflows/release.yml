@@ -1,7 +1,7 @@
 # Workflow name
 name: Release
 
-# This workflow is triggered manually from the GitHub Actions tab.
+# This workflow is triggered manually from the GitHub Actions tab test.
 on:
   workflow_dispatch:
     inputs:
