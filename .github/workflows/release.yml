@@ -42,6 +42,11 @@ jobs:
           workflow: build.yml
           # Use the branch from the manual input instead of hardcoding 'main'.
           branch: ${{ github.event.inputs.source_branch }}
+                 
+          # Tell the action to look for artifacts created by a 'pull_request' event.
+          event: pull_reques
+
+          
           # We use a wildcard (*) because the artifact name from the build workflow
           # contains a dynamic commit SHA (e.g., vscode-reh-web-linux-x64-0.0.0-dev-...).
           name: npm-package
