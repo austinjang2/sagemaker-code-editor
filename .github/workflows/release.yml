@@ -44,7 +44,7 @@ jobs:
           branch: ${{ github.event.inputs.source_branch }}
                  
           # Tell the action to look for artifacts created by a 'pull_request' event.
-          event: pull_reques
+          event: pull_request
 
           
           # We use a wildcard (*) because the artifact name from the build workflow
