@@ -22,7 +22,7 @@ jobs:
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       # This permission is required for creating a release and uploading assets.
       contents: write
@@ -39,7 +39,7 @@ jobs:
         uses: dawidd6/action-download-artifact@v6
         with:
           # IMPORTANT: This must match the 'name:' field in your build.yaml file.
-          workflow: Build
+          workflow: build.yml
           # Use the branch from the manual input instead of hardcoding 'main'.
           branch: ${{ github.event.inputs.source_branch }}
           # We use a wildcard (*) because the artifact name from the build workflow
