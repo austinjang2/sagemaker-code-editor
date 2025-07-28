@@ -1,0 +1,90 @@
+# Workflow name
+name: Release
+
+# This workflow is triggered manually from the GitHub Actions tab.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The release version (e.g., v1.8.0). This will be used to create the Git tag.'
+        required: true
+        type: string
+
+jobs:
+  # The job for creating a release
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # This permission is required for creating a release and uploading assets.
+      contents: write
+
+    steps:
+      # Step 1: Check out the repository code.
+      # This is necessary for the release action to create a Git tag in your repository.
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Download the build artifact from your 'Build' workflow.
+      # This finds the latest successful run on the 'main' branch and downloads the artifact.
+      # This is the key step to avoid rebuilding from scratch.
+      - name: Download artifact from build workflow
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          # IMPORTANT: This must match the 'name:' field in your build.yaml file.
+          workflow: Build
+          # The branch where the successful workflow ran.
+          branch: main
+          # We use a wildcard (*) because the artifact name from the build workflow
+          # contains a dynamic commit SHA (e.g., vscode-reh-web-linux-x64-0.0.0-dev-70c943b).
+          name: vscode-reh-web-linux-x64-*
+          # The path where the downloaded artifact will be saved.
+          path: ./release-assets
+          # Ensure we only get the artifact from a successful run.
+          workflow_conclusion: success
+
+      # Step 3: Prepare the release assets by renaming the artifact.
+      # This takes the downloaded file (with a "dev" name) and gives it a clean,
+      # official versioned name for the release. This is the name conda-forge will use.
+      - name: Prepare release assets
+        id: prepare_assets
+        run: |
+          # Find the downloaded tarball (there should only be one).
+          ARTIFACT_FILE=$(find ./release-assets -name "*.tar.gz")
+          
+          if [ -z "$ARTIFACT_FILE" ]; then
+            echo "::error::Build artifact not found in ./release-assets! Make sure the 'Build' workflow ran successfully on the main branch."
+            exit 1
+          fi
+          
+          # Get the version from the manual input, and remove the leading 'v' if it exists.
+          VERSION_TAG="${{ github.event.inputs.version }}"
+          VERSION_NUM="${VERSION_TAG#v}"
+          
+          # Create the new, clean filename for the release.
+          # This is the standardized name that your conda-forge recipe will expect.
+          NEW_FILENAME="sagemaker-code-editor-linux-x64-${VERSION_NUM}.tar.gz"
+          
+          # Rename the file.
+          mv "$ARTIFACT_FILE" "./release-assets/$NEW_FILENAME"
+          
+          echo "Renamed artifact to $NEW_FILENAME"
+          # Set the new filename as an output for the next step.
+          echo "filename=./release-assets/$NEW_FILENAME" >> $GITHUB_OUTPUT
+
+      # Step 4: Create the GitHub Release and upload the prepared asset.
+      # This action creates the tag, the release, and uploads your .tar.gz file.
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # The name of the release, e.g., "Release v1.8.0".
+          name: Release ${{ github.event.inputs.version }}
+          # The Git tag to create, e.g., "v1.8.0".
+          tag_name: ${{ github.event.inputs.version }}
+          # Path to the file(s) to upload as release assets.
+          files: ${{ steps.prepare_assets.outputs.filename }}
+          # Set to 'false' to publish immediately, or 'true' to create a draft.
+          draft: false
+          # Automatically generate release notes from commits since the last release.
+          generate_release_notes: true
