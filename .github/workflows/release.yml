@@ -75,7 +75,7 @@ jobs:
           
           # Create the new, clean filename for the release.
           # This is the standardized name that your conda-forge recipe will expect.
-          NEW_FILENAME="sagemaker-code-editor-linux-x64-${VERSION_NUM}.tar.gz"
+          NEW_FILENAME="code-editor${VERSION_NUM}.tar.gz"
           
           # Rename the file.
           mv "$ARTIFACT_FILE" "./release-assets/$NEW_FILENAME"
