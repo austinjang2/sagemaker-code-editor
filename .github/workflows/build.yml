@@ -4,11 +4,11 @@ name: Build
 # This workflow is triggered on pushes and pull requests to the main branch.
 on:
   push:
-    branches:
-      - main
+    #branches:
+      #- main
   pull_request:
-    branches:
-      - main
+    #branches:
+      #- main
 
 # Concurrency settings to cancel in-progress runs for the same PR or branch
 # This prevents wasting resources on outdated commits.
