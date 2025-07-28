@@ -9,6 +9,13 @@ on:
         description: 'The release version (e.g., v1.8.0). This will be used to create the Git tag.'
         required: true
         type: string
+      # This input allows you to specify which branch to create the release from.
+      source_branch:
+        description: 'The branch to find the latest successful build artifact on.'
+        required: true
+        type: string
+        # We default to 'main' to make the most common case easy.
+        default: 'main'
 
 jobs:
   # The job for creating a release
@@ -27,17 +34,16 @@ jobs:
         uses: actions/checkout@v4
 
       # Step 2: Download the build artifact from your 'Build' workflow.
-      # This finds the latest successful run on the 'main' branch and downloads the artifact.
-      # This is the key step to avoid rebuilding from scratch.
+      # This finds the latest successful run on the specified branch and downloads the artifact.
       - name: Download artifact from build workflow
         uses: dawidd6/action-download-artifact@v6
         with:
           # IMPORTANT: This must match the 'name:' field in your build.yaml file.
           workflow: Build
-          # The branch where the successful workflow ran.
-          branch: main
+          # Use the branch from the manual input instead of hardcoding 'main'.
+          branch: ${{ github.event.inputs.source_branch }}
           # We use a wildcard (*) because the artifact name from the build workflow
-          # contains a dynamic commit SHA (e.g., vscode-reh-web-linux-x64-0.0.0-dev-70c943b).
+          # contains a dynamic commit SHA (e.g., vscode-reh-web-linux-x64-0.0.0-dev-...).
           name: vscode-reh-web-linux-x64-*
           # The path where the downloaded artifact will be saved.
           path: ./release-assets
@@ -45,8 +51,7 @@ jobs:
           workflow_conclusion: success
 
       # Step 3: Prepare the release assets by renaming the artifact.
-      # This takes the downloaded file (with a "dev" name) and gives it a clean,
-      # official versioned name for the release. This is the name conda-forge will use.
+      # This takes the downloaded file and gives it a clean, versioned name.
       - name: Prepare release assets
         id: prepare_assets
         run: |
@@ -54,7 +59,7 @@ jobs:
           ARTIFACT_FILE=$(find ./release-assets -name "*.tar.gz")
           
           if [ -z "$ARTIFACT_FILE" ]; then
-            echo "::error::Build artifact not found in ./release-assets! Make sure the 'Build' workflow ran successfully on the main branch."
+            echo "::error::Build artifact not found in ./release-assets! Make sure the 'Build' workflow ran successfully on the '${{ github.event.inputs.source_branch }}' branch."
             exit 1
           fi
           
@@ -88,3 +93,4 @@ jobs:
           draft: false
           # Automatically generate release notes from commits since the last release.
           generate_release_notes: true
+          
