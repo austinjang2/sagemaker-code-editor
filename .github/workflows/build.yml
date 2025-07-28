@@ -116,5 +116,5 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vscode-reh-web-linux-x64-${{ env.VERSION }}
+          name: npm-package
           path: vscode-reh-web-linux-x64-${{ env.VERSION }}.tar.gz
