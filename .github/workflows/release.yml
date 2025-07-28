@@ -1,5 +1,7 @@
+# Workflow name
 name: Release
 
+# This workflow is triggered manually from the GitHub Actions tab test.
 on:
   workflow_dispatch:
     inputs:
@@ -7,27 +9,30 @@ on:
         description: 'The release version (e.g., v1.8.0). This will be used to create the Git tag.'
         required: true
         type: string
+      # This input allows you to specify which branch to create the release from.
       source_branch:
         description: 'The branch to find the latest successful build artifact on.'
         required: true
         type: string
+        # We default to 'main' to make the most common case easy.
         default: 'main'
 
 jobs:
+  # The job for creating a release
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
+      # This permission is required for creating a release and uploading assets.
       contents: write
 
     steps:
-      # Step 1: Checkout repository code
+      # Step 1: Check out the repository code.
+      # This is necessary for the release action to create a Git tag in your repository.
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Delete existing tag if it exists, so the new tag is created with the release time
-      # This ensures that the tag time and release time are always consistent
       - name: Delete existing tag (if any)
         uses: actions/github-script@v7
         with:
@@ -43,42 +48,69 @@ jobs:
             } catch (e) {
               console.log(`Tag ${tag} does not exist or already deleted.`);
             }
-
-      # Step 3: Download the build artifact produced by your build workflow
+      # Step 2: Download the build artifact from your 'Build' workflow.
+      # This finds the latest successful run on the specified branch and downloads the artifact.
       - name: Download artifact from build workflow
         uses: dawidd6/action-download-artifact@v6
         with:
+          # IMPORTANT: This must match the 'name:' field in your build.yaml file.
           workflow: build.yml
+          # Use the branch from the manual input instead of hardcoding 'main'.
           branch: ${{ github.event.inputs.source_branch }}
+                 
+          # Tell the action to look for artifacts created by a 'pull_request' event.
           event: pull_request
           allow_forks: true
+
+          
+          # We use a wildcard (*) because the artifact name from the build workflow
+          # contains a dynamic commit SHA (e.g., vscode-reh-web-linux-x64-0.0.0-dev-...).
           name: npm-package
+          # The path where the downloaded artifact will be saved.
           path: ./release-assets
+          # Ensure we only get the artifact from a successful run.
           workflow_conclusion: success
 
-      # Step 4: Rename the artifact to a standardized release filename
+      # Step 3: Prepare the release assets by renaming the artifact.
+      # This takes the downloaded file and gives it a clean, versioned name.
       - name: Prepare release assets
         id: prepare_assets
         run: |
+          # Find the downloaded tarball (there should only be one).
           ARTIFACT_FILE=$(find ./release-assets -name "*.tar.gz")
+          
           if [ -z "$ARTIFACT_FILE" ]; then
             echo "::error::Build artifact not found in ./release-assets! Make sure the 'Build' workflow ran successfully on the '${{ github.event.inputs.source_branch }}' branch."
             exit 1
           fi
+          
+          # Get the version from the manual input, and remove the leading 'v' if it exists.
           VERSION_TAG="${{ github.event.inputs.version }}"
           VERSION_NUM="${VERSION_TAG#v}"
+          
+          # Create the new, clean filename for the release.
+          # This is the standardized name that your conda-forge recipe will expect.
           NEW_FILENAME="code-editor${VERSION_NUM}.tar.gz"
+          
+          # Rename the file.
           mv "$ARTIFACT_FILE" "./release-assets/$NEW_FILENAME"
+          
           echo "Renamed artifact to $NEW_FILENAME"
+          # Set the new filename as an output for the next step.
           echo "filename=./release-assets/$NEW_FILENAME" >> $GITHUB_OUTPUT
-
-      # Step 5: Create the release and upload the asset, also create the tag
-      # This step will generate release notes, tag, and ensure all times match
+      # Step 4: Create the GitHub Release and upload the prepared asset.
+      # This action creates the tag, the release, and uploads your .tar.gz file.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          # The name of the release, e.g., "Release v1.8.0".
           name: CodeEditor ${{ github.event.inputs.version }}
+          # The Git tag to create, e.g., "v1.8.0".
           tag_name: ${{ github.event.inputs.version }}
+          # Path to the file(s) to upload as release assets.
           files: ${{ steps.prepare_assets.outputs.filename }}
+          # Set to 'false' to publish immediately, or 'true' to create a draft.
           draft: false
-          generate_release_notes: true
+          # Automatically generate release notes from commits since the last release.
+          generate_release_notes: false
+          
