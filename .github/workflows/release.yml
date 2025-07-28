@@ -45,6 +45,7 @@ jobs:
                  
           # Tell the action to look for artifacts created by a 'pull_request' event.
           event: pull_request
+          allow_forks: true
 
           
           # We use a wildcard (*) because the artifact name from the build workflow
