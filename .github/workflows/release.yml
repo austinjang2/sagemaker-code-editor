@@ -44,7 +44,7 @@ jobs:
           branch: ${{ github.event.inputs.source_branch }}
           # We use a wildcard (*) because the artifact name from the build workflow
           # contains a dynamic commit SHA (e.g., vscode-reh-web-linux-x64-0.0.0-dev-...).
-          name: vscode-reh-web-linux-x64-*
+          name: npm-package
           # The path where the downloaded artifact will be saved.
           path: ./release-assets
           # Ensure we only get the artifact from a successful run.
