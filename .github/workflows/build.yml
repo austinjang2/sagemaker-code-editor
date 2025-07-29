@@ -90,29 +90,39 @@ jobs:
           # Run the gulp build task using npx
           npx gulp vscode-reh-web-${ARCH_ALIAS}-min
 
-      # Step 7: Find the exact path of the build output directory.
+      # Step 7: Find the exact path of the original build output directory.
       - name: Find build output
         id: find_output
         run: |
-          BUILD_PATH=$(find . -name "sagemaker-code-editor" -type d | head -n 1)
+          BUILD_PATH=$(find . -name "vscode-reh-web-linux-x64" -type d | head -n 1)
           if [ -z "$BUILD_PATH" ]; then
-            echo "::error::Build output directory 'sagemaker-code-editor' not found!"
+            echo "::error::Build output directory 'vscode-reh-web-linux-x64' not found!"
             exit 1
           fi
           echo "Build output found at: $BUILD_PATH"
           echo "build_path=$BUILD_PATH" >> $GITHUB_OUTPUT
       
-      # Step 8: Create a compressed tarball of the build output.
+      # Step 8: Rename the build output directory to sagemaker-code-editor
+      - name: Rename build output directory
+        id: rename_output
+        run: |
+          ORIG_PATH="${{ steps.find_output.outputs.build_path }}"
+          PARENT_DIR=$(dirname "$ORIG_PATH")
+          mv "$ORIG_PATH" "$PARENT_DIR/sagemaker-code-editor"
+          echo "Renamed build output directory to: $PARENT_DIR/sagemaker-code-editor"
+          echo "build_path=$PARENT_DIR/sagemaker-code-editor" >> $GITHUB_OUTPUT
+      
+      # Step 9: Create a compressed tarball of the renamed build output.
       - name: Create tarball archive
         run: |
           TARBALL="sagemaker-code-editor-${{ env.VERSION }}.tar.gz"
-          BUILD_DIR_PATH="${{ steps.find_output.outputs.build_path }}"
+          BUILD_DIR_PATH="${{ steps.rename_output.outputs.build_path }}"
           PARENT_DIR=$(dirname "$BUILD_DIR_PATH")
           BUILD_DIR_NAME=$(basename "$BUILD_DIR_PATH")
           echo "Creating '$TARBALL' from '$BUILD_DIR_NAME' in '$PARENT_DIR'"
           tar czf $TARBALL -C "$PARENT_DIR" "$BUILD_DIR_NAME"
       
-      # Step 9: Upload the tarball as a build artifact.
+      # Step 10: Upload the tarball as a build artifact.
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
