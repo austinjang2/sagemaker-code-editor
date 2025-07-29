@@ -94,27 +94,27 @@ jobs:
       - name: Find build output
         id: find_output
         run: |
-          BUILD_PATH=$(find . -name "vscode-reh-web-linux-x64" -type d | head -n 1)
+          BUILD_PATH=$(find . -name "sagemaker-code-editor" -type d | head -n 1)
           if [ -z "$BUILD_PATH" ]; then
-            echo "::error::Build output directory 'vscode-reh-web-linux-x64' not found!"
+            echo "::error::Build output directory 'sagemaker-code-editor' not found!"
             exit 1
           fi
           echo "Build output found at: $BUILD_PATH"
           echo "build_path=$BUILD_PATH" >> $GITHUB_OUTPUT
-
+      
       # Step 8: Create a compressed tarball of the build output.
       - name: Create tarball archive
         run: |
-          TARBALL="vscode-reh-web-linux-x64-${{ env.VERSION }}.tar.gz"
+          TARBALL="sagemaker-code-editor-${{ env.VERSION }}.tar.gz"
           BUILD_DIR_PATH="${{ steps.find_output.outputs.build_path }}"
           PARENT_DIR=$(dirname "$BUILD_DIR_PATH")
           BUILD_DIR_NAME=$(basename "$BUILD_DIR_PATH")
           echo "Creating '$TARBALL' from '$BUILD_DIR_NAME' in '$PARENT_DIR'"
           tar czf $TARBALL -C "$PARENT_DIR" "$BUILD_DIR_NAME"
-
+      
       # Step 9: Upload the tarball as a build artifact.
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: npm-package
-          path: vscode-reh-web-linux-x64-${{ env.VERSION }}.tar.gz
+          path: sagemaker-code-editor-${{ env.VERSION }}.tar.gz
