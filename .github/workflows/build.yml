@@ -17,10 +17,26 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Run unit tests before building the application
+  run-unit-tests:
+    name: Run unit tests
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Output placeholder message for unit tests
+      - name: Hudson's test of unit test
+        run: echo "Hudson's test of unit test"
+
+
   # The main job for building the application
   build:
     name: Build sagemaker-code-editor
     runs-on: ubuntu-latest
+    # Ensure unit tests pass before building
+    needs: run-unit-tests 
     timeout-minutes: 180
     env:
       # Environment variable to optimize the build process
@@ -128,3 +144,16 @@ jobs:
         with:
           name: npm-package
           path: sagemaker-code-editor-${{ env.VERSION }}.tar.gz
+  # Run end-to-end tests after the build is complete
+  run-e2e-tests:
+    name: Run e2e tests
+    runs-on: ubuntu-latest
+    needs: build  # Ensure e2e tests run after build
+    steps:
+      # Checkout repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Output placeholder message for e2e tests
+      - name: Hudson's test of e2e test
+        run: echo "Hudson's test of e2e test"
