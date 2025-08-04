@@ -32,6 +32,9 @@ jobs:
       # This is necessary for the release action to create a Git tag in your repository.
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.source_branch }}
+
 
       # Step 2: Download the build artifact from your 'Build' workflow.
       # This finds the latest successful run on the specified branch and downloads the artifact.
