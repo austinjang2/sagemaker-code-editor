@@ -11,7 +11,7 @@ on:
         type: string
       # This input allows you to specify which branch to create the release from.
       source_branch:
-        description: 'The branch to find the latest successful build artifact on.'
+        description: 'The branch to find the artifact on and to tag for the release.'
         required: true
         type: string
         # We default to 'main' to make the most common case easy.
@@ -28,13 +28,19 @@ jobs:
       contents: write
 
     steps:
-      # Step 1: Check out the repository code.
-      # This is necessary for the release action to create a Git tag in your repository.
+      # Step 1: Check out the repository code FROM THE SPECIFIED SOURCE BRANCH.
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.source_branch }}
 
+      # Step 2: Explicitly get the commit SHA of the checked-out branch HEAD.
+      # This ensures we are using the correct commit for tagging.
+      - name: Get commit SHA
+        id: get_sha
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      # Step 3: Delete existing tag if you want to re-run the release.
       - name: Delete existing tag (if any)
         uses: actions/github-script@v7
         with:
@@ -50,31 +56,29 @@ jobs:
             } catch (e) {
               console.log(`Tag ${tag} does not exist or already deleted.`);
             }
-      # Step 2: Download the build artifact from your 'Build' workflow.
-      # This finds the latest successful run on the specified branch and downloads the artifact.
+
+      # Step 4: Download the build artifact from your 'Build' workflow.
       - name: Download artifact from build workflow
         uses: dawidd6/action-download-artifact@v6
         with:
           # IMPORTANT: This must match the 'name:' field in your build.yaml file.
           workflow: build.yml
-          # Use the branch from the manual input instead of hardcoding 'main'.
+          # Use the branch from the manual input.
           branch: ${{ github.event.inputs.source_branch }}
                  
           # Tell the action to look for artifacts created by a 'pull_request' event.
           event: pull_request
           allow_forks: true
 
-          
           # We use a wildcard (*) because the artifact name from the build workflow
-          # contains a dynamic commit SHA (e.g., vscode-reh-web-linux-x64-0.0.0-dev-...).
+          # contains a dynamic commit SHA.
           name: npm-package
           # The path where the downloaded artifact will be saved.
           path: ./release-assets
           # Ensure we only get the artifact from a successful run.
           workflow_conclusion: success
 
-      # Step 3: Prepare the release assets by renaming the artifact.
-      # This takes the downloaded file and gives it a clean, versioned name.
+      # Step 5: Prepare the release assets by renaming the artifact.
       - name: Prepare release assets
         id: prepare_assets
         run: |
@@ -91,7 +95,7 @@ jobs:
           VERSION_NUM="${VERSION_TAG#v}"
           
           # Create the new, clean filename for the release.
-          # This is the standardized name that your conda-forge recipe will expect.
+
           NEW_FILENAME="code-editor${VERSION_NUM}.tar.gz"
           
           # Rename the file.
@@ -100,8 +104,10 @@ jobs:
           echo "Renamed artifact to $NEW_FILENAME"
           # Set the new filename as an output for the next step.
           echo "filename=./release-assets/$NEW_FILENAME" >> $GITHUB_OUTPUT
-      # Step 4: Create the GitHub Release and upload the prepared asset.
-      # This action creates the tag, the release, and uploads your .tar.gz file.
+
+
+      # Step 6: Create the GitHub Release using the CORRECT commit SHA.
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -111,8 +117,11 @@ jobs:
           tag_name: ${{ github.event.inputs.version }}
           # Path to the file(s) to upload as release assets.
           files: ${{ steps.prepare_assets.outputs.filename }}
-          # Set to 'false' to publish immediately, or 'true' to create a draft.
+          # Set to 'false' to publish immediately.
           draft: false
-          # Automatically generate release notes from commits since the last release.
+          # Set to false as we are not using auto-generated notes.
           generate_release_notes: false
-          
+          # CRITICAL: Force the tag to be created on the commit we explicitly got in Step 2.
+          # This overrides any incorrect metadata from the downloaded artifact.
+          target_commitish: ${{ steps.get_sha.outputs.sha }}
+
