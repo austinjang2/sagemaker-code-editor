@@ -66,7 +66,7 @@ jobs:
           # Use the branch from the manual input.
           branch: ${{ github.event.inputs.source_branch }}
           # Tell the action to look for artifacts created by a 'pull_request' event.
-          event: pull_request
+          event: push
           allow_forks: true
           # We use a wildcard (*) because the artifact name from the build workflow
           # contains a dynamic commit SHA.
