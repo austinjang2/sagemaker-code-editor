@@ -32,6 +32,8 @@ jobs:
       # This is necessary for the release action to create a Git tag in your repository.
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.source_branch }}
 
       - name: Delete existing tag (if any)
         uses: actions/github-script@v7
