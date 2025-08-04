@@ -65,9 +65,11 @@ jobs:
           workflow: build.yml
           # Use the branch from the manual input.
           branch: ${{ github.event.inputs.source_branch }}
+                 
           # Tell the action to look for artifacts created by a 'pull_request' event.
-          event: push
+          event: pull_request
           allow_forks: true
+
           # We use a wildcard (*) because the artifact name from the build workflow
           # contains a dynamic commit SHA.
           name: npm-package
@@ -93,6 +95,7 @@ jobs:
           VERSION_NUM="${VERSION_TAG#v}"
           
           # Create the new, clean filename for the release.
+
           NEW_FILENAME="code-editor${VERSION_NUM}.tar.gz"
           
           # Rename the file.
@@ -102,7 +105,9 @@ jobs:
           # Set the new filename as an output for the next step.
           echo "filename=./release-assets/$NEW_FILENAME" >> $GITHUB_OUTPUT
 
+
       # Step 6: Create the GitHub Release using the CORRECT commit SHA.
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -119,3 +124,4 @@ jobs:
           # CRITICAL: Force the tag to be created on the commit we explicitly got in Step 2.
           # This overrides any incorrect metadata from the downloaded artifact.
           target_commitish: ${{ steps.get_sha.outputs.sha }}
+
