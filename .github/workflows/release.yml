@@ -9,12 +9,11 @@ on:
         description: 'The release version (e.g., v1.8.0). This will be used to create the Git tag.'
         required: true
         type: string
-      # This input allows you to specify which branch to create the release from.
+      # This input specifies the branch to tag and release from.
       source_branch:
-        description: 'The branch to find the artifact on and to tag for the release.'
+        description: 'The branch to create the release from (e.g., main or 1.8). This branch MUST have the final code.'
         required: true
         type: string
-        # We default to 'main' to make the most common case easy.
         default: 'main'
 
 jobs:
@@ -28,54 +27,54 @@ jobs:
       contents: write
 
     steps:
-      # Step 1: Check out the repository code FROM THE SPECIFIED SOURCE BRANCH.
+      # Step 1: Check out the code from the SPECIFIED BRANCH in the AWS repository.
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          # This ensures we are on the correct branch to get the latest code.
           ref: ${{ github.event.inputs.source_branch }}
+          # CRITICAL: We check out the code from the AWS repository directly.
+          repository: aws/sagemaker-code-editor
 
       # Step 2: Explicitly get the commit SHA of the checked-out branch HEAD.
-      # This ensures we are using the correct commit for tagging.
       - name: Get commit SHA
         id: get_sha
         run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
-      # Step 3: Delete existing tag if you want to re-run the release.
+      # Step 3: Delete existing tag in the AWS repo if you want to re-run the release.
       - name: Delete existing tag (if any)
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const tag = '${{ github.event.inputs.version }}';
             try {
-              await github.git.deleteRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+              await github.rest.git.deleteRef({
+                owner: 'aws',
+                repo: 'sagemaker-code-editor',
                 ref: `tags/${tag}`
               });
               console.log(`Deleted existing tag: ${tag}`);
             } catch (e) {
+              if (e.status !== 404) {
+                // Re-throw the error if it's not a "Not Found" error
+                throw e;
+              }
               console.log(`Tag ${tag} does not exist or already deleted.`);
             }
 
-      # Step 4: Download the build artifact from your 'Build' workflow.
+      # Step 4: Download the build artifact from the UPSTREAM repository after a PUSH event.
       - name: Download artifact from build workflow
         uses: dawidd6/action-download-artifact@v6
         with:
-          # IMPORTANT: This must match the 'name:' field in your build.yaml file.
+          # CRITICAL: Explicitly specify the repository where the build artifact was created.
+          repo: aws/sagemaker-code-editor
+          # BEST PRACTICE: Look for artifacts created by a 'push' event (e.g., after a PR is merged).
+          event: push
           workflow: build.yml
-          # Use the branch from the manual input.
           branch: ${{ github.event.inputs.source_branch }}
-                 
-          # Tell the action to look for artifacts created by a 'pull_request' event.
-          event: pull_request
-          allow_forks: true
-
-          # We use a wildcard (*) because the artifact name from the build workflow
-          # contains a dynamic commit SHA.
           name: npm-package
-          # The path where the downloaded artifact will be saved.
           path: ./release-assets
-          # Ensure we only get the artifact from a successful run.
           workflow_conclusion: success
 
       # Step 5: Prepare the release assets by renaming the artifact.
@@ -86,7 +85,7 @@ jobs:
           ARTIFACT_FILE=$(find ./release-assets -name "*.tar.gz")
           
           if [ -z "$ARTIFACT_FILE" ]; then
-            echo "::error::Build artifact not found in ./release-assets! Make sure the 'Build' workflow ran successfully on the '${{ github.event.inputs.source_branch }}' branch."
+            echo "::error::Build artifact not found! Ensure a 'build.yml' workflow ran successfully on the '${{ github.event.inputs.source_branch }}' branch in 'aws/sagemaker-code-editor' after the code was pushed/merged."
             exit 1
           fi
           
@@ -95,7 +94,6 @@ jobs:
           VERSION_NUM="${VERSION_TAG#v}"
           
           # Create the new, clean filename for the release.
-
           NEW_FILENAME="code-editor${VERSION_NUM}.tar.gz"
           
           # Rename the file.
@@ -105,23 +103,18 @@ jobs:
           # Set the new filename as an output for the next step.
           echo "filename=./release-assets/$NEW_FILENAME" >> $GITHUB_OUTPUT
 
-
-      # Step 6: Create the GitHub Release using the CORRECT commit SHA.
-
+      # Step 6: Create the GitHub Release in the AWS repo using the CORRECT commit SHA.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          # The name of the release, e.g., "Release v1.8.0".
+          # We need a token with permissions to create releases in the AWS repo.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # CRITICAL: Explicitly specify the repository to create the release in.
+          repository: aws/sagemaker-code-editor
           name: CodeEditor ${{ github.event.inputs.version }}
-          # The Git tag to create, e.g., "v1.8.0".
           tag_name: ${{ github.event.inputs.version }}
-          # Path to the file(s) to upload as release assets.
           files: ${{ steps.prepare_assets.outputs.filename }}
-          # Set to 'false' to publish immediately.
           draft: false
-          # Set to false as we are not using auto-generated notes.
           generate_release_notes: false
           # CRITICAL: Force the tag to be created on the commit we explicitly got in Step 2.
-          # This overrides any incorrect metadata from the downloaded artifact.
           target_commitish: ${{ steps.get_sha.outputs.sha }}
-
