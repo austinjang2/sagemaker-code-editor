@@ -56,12 +56,13 @@ jobs:
               });
               console.log(`Deleted existing tag: ${tag}`);
             } catch (e) {
-              if (e.status !== 404) {
-                // Re-throw the error if it's not a "Not Found" error
+              if (e.status !== 404 && e.status !== 422) {
+                // Re-throw the error if it's not a "Not Found" or "Unprocessable" error
                 throw e;
               }
               console.log(`Tag ${tag} does not exist or already deleted.`);
             }
+              
 
       # Step 4: Download the build artifact from the UPSTREAM repository after a PUSH event.
       - name: Download artifact from build workflow
