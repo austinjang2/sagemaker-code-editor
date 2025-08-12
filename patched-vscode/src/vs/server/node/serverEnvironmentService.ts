@@ -9,6 +9,7 @@ import { NativeEnvironmentService } from 'vs/platform/environment/node/environme
 import { OPTIONS, OptionDescriptions } from 'vs/platform/environment/node/argv';
 import { refineServiceDecorator } from 'vs/platform/instantiation/common/instantiation';
 import { IEnvironmentService, INativeEnvironmentService } from 'vs/platform/environment/common/environment';
+import { IProductService } from 'vs/platform/product/common/productService';
 import { memoize } from 'vs/base/common/decorators';
 import { URI } from 'vs/base/common/uri';
 
@@ -232,6 +233,16 @@ export interface IServerEnvironmentService extends INativeEnvironmentService {
 }
 
 export class ServerEnvironmentService extends NativeEnvironmentService implements IServerEnvironmentService {
+
+	constructor(args: ServerParsedArgs, productService: IProductService) {
+		/* ----- sagemaker compatibility: map --base-path to --server-base-path ----- */
+		if (args['base-path']) {
+			args['server-base-path'] = args['base-path'];
+		}
+
+		super(args, productService);
+	}
+
 	@memoize
 	override get userRoamingDataHome(): URI { return this.appSettingsHome; }
 	override get args(): ServerParsedArgs { return super.args as ServerParsedArgs; }
