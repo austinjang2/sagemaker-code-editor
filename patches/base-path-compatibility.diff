@@ -1,0 +1,47 @@
+Index: sagemaker-code-editor/vscode/src/vs/server/node/serverEnvironmentService.ts
+===================================================================
+--- sagemaker-code-editor.orig/vscode/src/vs/server/node/serverEnvironmentService.ts
++++ sagemaker-code-editor/vscode/src/vs/server/node/serverEnvironmentService.ts
+@@ -11,6 +11,7 @@ import { OPTIONS, OptionDescriptions } from 'vs/platform/environment/node/argv'
+ import { refineServiceDecorator } from 'vs/platform/instantiation/common/instantiation';
+ import { IEnvironmentService, INativeEnvironmentService } from 'vs/platform/environment/common/environment';
++import { IProductService } from 'vs/platform/product/common/productService';
+ import { memoize } from 'vs/base/common/decorators';
+ import { URI } from 'vs/base/common/uri';
+ 
+@@ -89,6 +90,9 @@ export const serverOptions: OptionDescri
+ 
+ 	'compatibility': { type: 'string' },
+ 
++	/* ----- sagemaker compatibility ----- */
++	'base-path': { type: 'string' },
++
+ 	_: OPTIONS['_']
+ };
+ 
+@@ -212,6 +215,9 @@ export interface ServerParsedArgs {
+ 
+ 	compatibility: string;
+ 
++	/* ----- sagemaker compatibility ----- */
++	'base-path'?: string,
++
+ 	_: string[];
+ }
+ 
+@@ -234,6 +240,12 @@ export interface IServerEnvironmentService extends INativeEnvironmentService {
+ 
+ export class ServerEnvironmentService extends NativeEnvironmentService implements IServerEnvironmentService {
+ 
++	constructor(args: ServerParsedArgs, productService: IProductService) {
++		/* ----- sagemaker compatibility: map --base-path to --server-base-path ----- */
++		if (args['base-path']) {
++			args['server-base-path'] = args['base-path'];
++		}
++
++		super(args, productService);
++	}
++
+ 	@memoize
+ 	override get userRoamingDataHome(): URI { return this.appSettingsHome; }
+ 	override get args(): ServerParsedArgs { return super.args as ServerParsedArgs; }
