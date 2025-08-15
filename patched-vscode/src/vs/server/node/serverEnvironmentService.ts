@@ -3,19 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as nls from 'vs/nls';
+import * as nls from '../../nls.js';
 
-import { NativeEnvironmentService } from 'vs/platform/environment/node/environmentService';
-import { OPTIONS, OptionDescriptions } from 'vs/platform/environment/node/argv';
-import { refineServiceDecorator } from 'vs/platform/instantiation/common/instantiation';
-import { IEnvironmentService, INativeEnvironmentService } from 'vs/platform/environment/common/environment';
-import { IProductService } from 'vs/platform/product/common/productService';
-import { memoize } from 'vs/base/common/decorators';
-import { URI } from 'vs/base/common/uri';
+import { NativeEnvironmentService } from '../../platform/environment/node/environmentService.js';
+import { OPTIONS, OptionDescriptions } from '../../platform/environment/node/argv.js';
+import { refineServiceDecorator } from '../../platform/instantiation/common/instantiation.js';
+import { IEnvironmentService, INativeEnvironmentService } from '../../platform/environment/common/environment.js';
+import { IProductService } from '../../platform/product/common/productService.js';
+import { memoize } from '../../base/common/decorators.js';
+import { URI } from '../../base/common/uri.js';
 
 export const serverOptions: OptionDescriptions<Required<ServerParsedArgs>> = {
-
-	'locale': { type: 'string' },
 
 	/* ----- server setup ----- */
 
@@ -43,6 +41,7 @@ export const serverOptions: OptionDescriptions<Required<ServerParsedArgs>> = {
 	'log': OPTIONS['log'],
 	'logsPath': OPTIONS['logsPath'],
 	'force-disable-user-env': OPTIONS['force-disable-user-env'],
+	'enable-proposed-api': OPTIONS['enable-proposed-api'],
 
 	/* ----- vs code web options ----- */
 
@@ -72,6 +71,7 @@ export const serverOptions: OptionDescriptions<Required<ServerParsedArgs>> = {
 	'category': OPTIONS['category'],
 	'force': OPTIONS['force'],
 	'do-not-sync': OPTIONS['do-not-sync'],
+	'do-not-include-pack-dependencies': OPTIONS['do-not-include-pack-dependencies'],
 	'pre-release': OPTIONS['pre-release'],
 	'start-server': { type: 'boolean', cat: 'e', description: nls.localize('start-server', "Start the server when installing or uninstalling extensions. To be used in combination with 'install-extension', 'install-builtin-extension' and 'uninstall-extension'.") },
 
@@ -99,8 +99,6 @@ export const serverOptions: OptionDescriptions<Required<ServerParsedArgs>> = {
 };
 
 export interface ServerParsedArgs {
-
-	'locale'?: string;
 
 	/* ----- server setup ----- */
 
@@ -170,6 +168,7 @@ export interface ServerParsedArgs {
 	'logsPath'?: string;
 
 	'force-disable-user-env'?: boolean;
+	'enable-proposed-api'?: string[];
 
 	/* ----- vs code web options ----- */
 
@@ -202,6 +201,8 @@ export interface ServerParsedArgs {
 	force?: boolean; // used by install-extension
 	'do-not-sync'?: boolean; // used by install-extension
 	'pre-release'?: boolean; // used by install-extension
+	'do-not-include-pack-dependencies'?: boolean; // used by install-extension
+
 
 	'start-server'?: boolean;
 
