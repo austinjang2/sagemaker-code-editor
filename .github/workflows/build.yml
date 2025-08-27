@@ -83,6 +83,7 @@ jobs:
       # Step 4: Apply patches from the 'patches' directory if it exists.
       - name: Apply patches (if any)
         run: |
+          set -e  # Exit immediately if any command fails
           if [ -d patches ] && [ "$(ls -A patches)" ]; then
             quilt push -a
           fi
