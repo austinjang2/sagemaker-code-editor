@@ -73,7 +73,7 @@ Index: sagemaker-code-editor/vscode/src/vs/workbench/contrib/webview/browser/pre
  	<meta charset="UTF-8">
 
  	<meta http-equiv="Content-Security-Policy"
--		content="default-src 'none'; script-src 'sha256-nlLyDpnjtftJG2xvXh2vuy77l7xFTjfOz7Jnj1iXNmA=' 'self'; frame-src 'self'; style-src 'unsafe-inline';">
+-		content="default-src 'none'; script-src 'sha256-gEAyFzmkyqMoTTnN+3KReFUYoHsK4RAJEb+6eiul+UY=' 'self'; frame-src 'self'; style-src 'unsafe-inline';">
 +		content="default-src 'none'; script-src 'sha256-ap/AtocvSWp0rrxaO19DJy/nOpazT6M5Cv9utUWe7MA=' 'self'; frame-src 'self'; style-src 'unsafe-inline';">
 
  	<!-- Disable pinch zooming -->
@@ -91,23 +91,7 @@ Index: sagemaker-code-editor/vscode/src/vs/workbench/contrib/webview/browser/pre
  				if (!crypto.subtle) {
  					// cannot validate, not running in a secure context
  					throw new Error(`'crypto.subtle' is not available so webviews will not work. This is likely because the editor is not running in a secure context (https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts).`);
-Index: sagemaker-code-editor/vscode/src/vs/workbench/contrib/webview/browser/pre/index-no-csp.html
-===================================================================
---- sagemaker-code-editor.orig/vscode/src/vs/workbench/contrib/webview/browser/pre/index-no-csp.html
-+++ sagemaker-code-editor/vscode/src/vs/workbench/contrib/webview/browser/pre/index-no-csp.html
-@@ -334,6 +334,12 @@
- 
- 				const hostname = location.hostname;
- 
-+				// It is safe to run if we are on the same host.
-+				const parent = new URL(parentOrigin)
-+				if (parent.hostname === hostname) {
-+					return start(parentOrigin)
-+				}
-+
- 				if (!crypto.subtle) {
- 					// cannot validate, not running in a secure context
- 					throw new Error(`'crypto.subtle' is not available so webviews will not work. This is likely because the editor is not running in a secure context (https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts).`);
+
 Index: sagemaker-code-editor/vscode/src/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html
 ===================================================================
 --- sagemaker-code-editor.orig/vscode/src/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html
