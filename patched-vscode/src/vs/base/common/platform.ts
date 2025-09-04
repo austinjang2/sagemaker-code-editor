@@ -20,13 +20,6 @@ let _platformLocale: string = LANGUAGE_DEFAULT;
 let _translationsConfigFile: string | undefined = undefined;
 let _userAgent: string | undefined = undefined;
 
-interface NLSConfig {
-	locale: string;
-	osLocale: string;
-	availableLanguages: { [key: string]: string };
-	_translationsConfigFile: string;
-}
-
 export interface IProcessEnvironment {
 	[key: string]: string | undefined;
 }
@@ -87,13 +80,11 @@ if (typeof nodeProcess === 'object') {
 	const rawNlsConfig = nodeProcess.env['VSCODE_NLS_CONFIG'];
 	if (rawNlsConfig) {
 		try {
-			const nlsConfig: NLSConfig = JSON.parse(rawNlsConfig);
-			const resolved = nlsConfig.availableLanguages['*'];
-			_locale = nlsConfig.locale;
+			const nlsConfig: nls.INLSConfiguration = JSON.parse(rawNlsConfig);
+			_locale = nlsConfig.userLocale;
 			_platformLocale = nlsConfig.osLocale;
-			// VSCode's default language is 'en'
-			_language = resolved ? resolved : LANGUAGE_DEFAULT;
-			_translationsConfigFile = nlsConfig._translationsConfigFile;
+			_language = nlsConfig.resolvedLanguage || LANGUAGE_DEFAULT;
+			_translationsConfigFile = nlsConfig.languagePack?.translationsConfigFile;
 		} catch (e) {
 		}
 	}
@@ -109,22 +100,9 @@ else if (typeof navigator === 'object' && !isElectronRenderer) {
 	_isLinux = _userAgent.indexOf('Linux') >= 0;
 	_isMobile = _userAgent?.indexOf('Mobi') >= 0;
 	_isWeb = true;
-
-	_locale = LANGUAGE_DEFAULT;
-	_language = _locale;
-	_platformLocale = navigator.language;
-	const el = typeof document !== 'undefined' && document.getElementById('vscode-remote-nls-configuration');
-	const rawNlsConfig = el && el.getAttribute('data-settings');
-	if (rawNlsConfig) {
-		try {
-			const nlsConfig: NLSConfig = JSON.parse(rawNlsConfig);
-			const resolved = nlsConfig.availableLanguages['*'];
-			_locale = nlsConfig.locale;
-			_platformLocale = nlsConfig.osLocale;
-			_language = resolved ? resolved : LANGUAGE_DEFAULT;
-			_translationsConfigFile = nlsConfig._translationsConfigFile;
-		} catch (error) { /* Oh well. */ }
-	}
+	_language = nls.getNLSLanguage() || LANGUAGE_DEFAULT;
+	_locale = navigator.language.toLowerCase();
+	_platformLocale = _locale;
 }
 
 // Unknown environment
@@ -180,7 +158,7 @@ export const userAgent = _userAgent;
 /**
  * The language used for the user interface. The format of
  * the string is all lower case (e.g. zh-tw for Traditional
- * Chinese)
+ * Chinese or de for German)
  */
 export const language = _language;
 
@@ -206,15 +184,16 @@ export namespace Language {
 }
 
 /**
- * The OS locale or the locale specified by --locale. The format of
- * the string is all lower case (e.g. zh-tw for Traditional
- * Chinese). The UI is not necessarily shown in the provided locale.
+ * Desktop: The OS locale or the locale specified by --locale or `argv.json`.
+ * Web: matches `platformLocale`.
+ *
+ * The UI is not necessarily shown in the provided locale.
  */
 export const locale = _locale;
 
 /**
  * This will always be set to the OS/browser's locale regardless of
- * what was specified by --locale. The format of the string is all
+ * what was specified otherwise. The format of the string is all
  * lower case (e.g. zh-tw for Traditional Chinese). The UI is not
  * necessarily shown in the provided locale.
  */
