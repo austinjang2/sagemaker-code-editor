@@ -20,6 +20,13 @@ let _platformLocale: string = LANGUAGE_DEFAULT;
 let _translationsConfigFile: string | undefined = undefined;
 let _userAgent: string | undefined = undefined;
 
+interface NLSConfig {
+	locale: string;
+	osLocale: string;
+	availableLanguages: { [key: string]: string };
+	_translationsConfigFile: string;
+}
+
 export interface IProcessEnvironment {
 	[key: string]: string | undefined;
 }
@@ -80,11 +87,12 @@ if (typeof nodeProcess === 'object') {
 	const rawNlsConfig = nodeProcess.env['VSCODE_NLS_CONFIG'];
 	if (rawNlsConfig) {
 		try {
-			const nlsConfig: nls.INLSConfiguration = JSON.parse(rawNlsConfig);
-			_locale = nlsConfig.userLocale;
+			const nlsConfig: NLSConfig = JSON.parse(rawNlsConfig);
+			const resolved = nlsConfig.availableLanguages['*'];
+			_locale = nlsConfig.locale;
 			_platformLocale = nlsConfig.osLocale;
-			_language = nlsConfig.resolvedLanguage || LANGUAGE_DEFAULT;
-			_translationsConfigFile = nlsConfig.languagePack?.translationsConfigFile;
+			_language = resolved ? resolved : LANGUAGE_DEFAULT;
+			_translationsConfigFile = nlsConfig._translationsConfigFile;
 		} catch (e) {
 		}
 	}
@@ -100,9 +108,21 @@ else if (typeof navigator === 'object' && !isElectronRenderer) {
 	_isLinux = _userAgent.indexOf('Linux') >= 0;
 	_isMobile = _userAgent?.indexOf('Mobi') >= 0;
 	_isWeb = true;
-	_language = nls.getNLSLanguage() || LANGUAGE_DEFAULT;
-	_locale = navigator.language.toLowerCase();
-	_platformLocale = _locale;
+	_locale = LANGUAGE_DEFAULT;
+ 	_language = _locale;
+ 	_platformLocale = navigator.language;
+	const el = typeof document !== 'undefined' && document.getElementById('vscode-remote-nls-configuration');
+	const rawNlsConfig = el && el.getAttribute('data-settings');
+	if (rawNlsConfig) {
+		try {
+			const nlsConfig: NLSConfig = JSON.parse(rawNlsConfig);
+			const resolved = nlsConfig.availableLanguages['*'];
+			_locale = nlsConfig.locale;
+			_platformLocale = nlsConfig.osLocale;
+			_language = resolved ? resolved : LANGUAGE_DEFAULT;
+			_translationsConfigFile = nlsConfig._translationsConfigFile;
+		} catch (error) { /* Oh well. */ }
+	}
 }
 
 // Unknown environment
