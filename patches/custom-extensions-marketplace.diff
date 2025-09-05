@@ -102,13 +102,13 @@ Index: sagemaker-code-editor/vscode/src/vs/server/node/webClientServer.ts
 -				}).toString(true)
 -			} : undefined
 +			extensionsGallery: this._productService.extensionsGallery,
-		};
-
-		const proposedApi = this._environmentService.args['enable-proposed-api'];
-		if (proposedApi?.length) {
-			productConfiguration.extensionsEnabledWithApiProposalVersion ??= [];
-			productConfiguration.extensionsEnabledWithApiProposalVersion.push(...proposedApi);
-		}
+ 		};
+ 
+ 		const proposedApi = this._environmentService.args['enable-proposed-api'];
+ 		if (proposedApi?.length) {
+ 			productConfiguration.extensionsEnabledWithApiProposalVersion ??= [];
+ 			productConfiguration.extensionsEnabledWithApiProposalVersion.push(...proposedApi);
+ 		}
 
 Index: sagemaker-code-editor/vscode/product.json
 ===================================================================
@@ -134,7 +134,7 @@ Index: sagemaker-code-editor/vscode/src/vs/platform/extensionResourceLoader/comm
 ===================================================================
 --- sagemaker-code-editor.orig/vscode/src/vs/platform/extensionResourceLoader/common/extensionResourceLoader.ts
 +++ sagemaker-code-editor/vscode/src/vs/platform/extensionResourceLoader/common/extensionResourceLoader.ts
-@@ -16,7 +16,6 @@ import { getServiceMachineId } from '..
+@@ -16,7 +16,6 @@ import { getServiceMachineId } from '../../externalServices/common/serviceMachineId.js';
  import { IStorageService } from '../../storage/common/storage.js';
  import { TelemetryLevel } from '../../telemetry/common/telemetry.js';
  import { getTelemetryLevel, supportsTelemetry } from '../../telemetry/common/telemetryUtils.js';
