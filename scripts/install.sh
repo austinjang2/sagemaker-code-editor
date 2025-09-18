@@ -93,4 +93,4 @@ printf "\n======== Building project in ${PROJ_ROOT}/vscode ========\n"
 # npm --cwd "${PROJ_ROOT}/vscode" download-builtin-extensions
 cd ${PROJ_ROOT}/vscode
 npm install
-npm download-builtin-extensions
+npm run download-builtin-extensions
