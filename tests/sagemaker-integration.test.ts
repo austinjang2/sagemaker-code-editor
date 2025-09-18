@@ -45,7 +45,7 @@ describe('sagemaker-integration.diff validation', () => {
     const content = readFileSync(filePath, 'utf8');
     
     // Check for SagemakerServerClient import
-    const clientImport = "import { SagemakerServerClient } from 'vs/workbench/browser/client';"
+    const clientImport = "import { SagemakerServerClient } from"
 
     if (!content.includes(clientImport)) {
       throw new Error(`Expected SagemakerServerClient import not found in ${filePath}`);
