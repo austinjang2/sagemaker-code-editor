@@ -64,6 +64,7 @@ Index: sagemaker-code-editor/vscode/extensions/sagemaker-idle-extension/package.
 +  "displayName": "Sagemaker Idle Extension",
 +  "description": "Expose an API called /idle that returns latest activity timestamp",
 +  "extensionKind": [
++    "ui",
 +    "workspace"
 +  ],
 +  "version": "1.0.0",
@@ -189,10 +190,7 @@ Index: sagemaker-code-editor/vscode/extensions/sagemaker-idle-extension/src/exte
 +		vscode.window.onDidChangeTextEditorSelection((_) => {
 +			updateLastActivityTimestamp();
 +		}),
-+		vscode.window.onDidOpenTerminal((_) => {
-+			updateLastActivityTimestamp();
-+		}),
-+		vscode.window.onDidCloseTerminal((_) => {
++		vscode.window.onDidWriteTerminalData((_) => {
 +			updateLastActivityTimestamp();
 +		})
 +	);
