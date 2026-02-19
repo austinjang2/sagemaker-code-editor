@@ -5,7 +5,7 @@ Index: sagemaker-code-editor/vscode/extensions/sagemaker-idle-extension/README.m
 @@ -0,0 +1,3 @@
 +# Code Editor Idle Extension
 +
-+The Code Editor Idle Extension tracks user activity and logs the last active timestamp (in UTC) to a local file. User activities monitored include file changes, text editor selection changes, and terminal interactions. Additionally, it provides an API endpoint `/api/idle` that returns the lastActiveTimestamp.
++The Code Editor Idle Extension tracks user activity and logs the last active timestamp (in UTC) to a local file. User activities monitored include file changes, text editor selection changes, terminal interactions, background processes, notebook kernel activity, and unsaved work. Additionally, it provides an API endpoint `/api/idle` that returns the lastActiveTimestamp.
 \ No newline at end of file
 Index: sagemaker-code-editor/vscode/extensions/sagemaker-idle-extension/extension-browser.webpack.config.js
 ===================================================================
@@ -153,13 +153,19 @@ Index: sagemaker-code-editor/vscode/extensions/sagemaker-idle-extension/src/exte
 +import * as path from "path";
 +
 +let idleFilePath: string;
++let checkInterval: NodeJS.Timeout;
 +
 +export function activate(context: vscode.ExtensionContext) {
 +	initializeIdleFilePath();
 +	registerEventListeners(context);
++	startPeriodicChecks();
 +}
 +
-+export function deactivate() {}
++export function deactivate() {
++	if (checkInterval) {
++		clearInterval(checkInterval);
++	}
++}
 +
 +/**
 + * Initializes the file path where the idle timestamp will be stored.
@@ -175,7 +181,8 @@ Index: sagemaker-code-editor/vscode/extensions/sagemaker-idle-extension/src/exte
 +
 +/**
 + * Registers event listeners to monitor user activity within the VSCode editor.
-+ * It listens to document changes, editor focus changes, text selection changes, and terminal events.
++ * It listens to document changes, editor focus changes, text selection changes, terminal events,
++ * task execution, and notebook kernel state changes.
 + * @param context - The context in which the extension is running.
 + */
 +function registerEventListeners(context: vscode.ExtensionContext) {
@@ -194,8 +201,56 @@ Index: sagemaker-code-editor/vscode/extensions/sagemaker-idle-extension/src/exte
 +		}),
 +		vscode.window.onDidCloseTerminal((_) => {
 +			updateLastActivityTimestamp();
++		}),
++		vscode.tasks.onDidStartTask((_) => {
++			updateLastActivityTimestamp();
++		}),
++		vscode.tasks.onDidEndTask((_) => {
++			updateLastActivityTimestamp();
++		}),
++		vscode.workspace.onDidChangeNotebookDocument((_) => {
++			updateLastActivityTimestamp();
 +		})
 +	);
++}
++
++/**
++ * Starts periodic checks for background activity (running tasks, executing kernels, unsaved work).
++ */
++function startPeriodicChecks() {
++	checkInterval = setInterval(() => {
++		if (hasBackgroundActivity()) {
++			updateLastActivityTimestamp();
++		}
++	}, 60000); // Check every 60 seconds
++}
++
++/**
++ * Checks if there is any background activity that should prevent idle state.
++ * @returns true if there are running tasks, executing notebook kernels, or unsaved work.
++ */
++function hasBackgroundActivity(): boolean {
++	// Check for running tasks
++	if (vscode.tasks.taskExecutions.length > 0) {
++		return true;
++	}
++
++	// Check for executing notebook kernels or unsaved work
++	for (const notebook of vscode.workspace.notebookDocuments) {
++		// Check if any cell is executing
++		for (const cell of notebook.getCells()) {
++			if (cell.executionSummary?.executionOrder !== undefined && 
++				cell.executionSummary.timing?.endTime === undefined) {
++				return true;
++			}
++		}
++		// Check if notebook has unsaved changes
++		if (notebook.isDirty) {
++			return true;
++		}
++	}
++
++	return vscode.workspace.textDocuments.some(doc => doc.isDirty && doc.uri.scheme === 'file');
 +}
 +
 +/**
