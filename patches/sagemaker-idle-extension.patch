@@ -188,27 +188,35 @@ Index: sagemaker-code-editor/vscode/extensions/sagemaker-idle-extension/src/exte
 +function registerEventListeners(context: vscode.ExtensionContext) {
 +	context.subscriptions.push(
 +		vscode.workspace.onDidChangeTextDocument((_) => {
++			console.log('[IdleMonitor] Text document changed');
 +			updateLastActivityTimestamp();
 +		}),
 +		vscode.window.onDidChangeActiveTextEditor((_) => {
++			console.log('[IdleMonitor] Active text editor changed');
 +			updateLastActivityTimestamp();
 +		}),
 +		vscode.window.onDidChangeTextEditorSelection((_) => {
++			console.log('[IdleMonitor] Text editor selection changed');
 +			updateLastActivityTimestamp();
 +		}),
 +		vscode.window.onDidOpenTerminal((_) => {
++			console.log('[IdleMonitor] Terminal opened');
 +			updateLastActivityTimestamp();
 +		}),
 +		vscode.window.onDidCloseTerminal((_) => {
++			console.log('[IdleMonitor] Terminal closed');
 +			updateLastActivityTimestamp();
 +		}),
 +		vscode.tasks.onDidStartTask((_) => {
++			console.log('[IdleMonitor] Task started');
 +			updateLastActivityTimestamp();
 +		}),
 +		vscode.tasks.onDidEndTask((_) => {
++			console.log('[IdleMonitor] Task ended');
 +			updateLastActivityTimestamp();
 +		}),
 +		vscode.workspace.onDidChangeNotebookDocument((_) => {
++			console.log('[IdleMonitor] Notebook document changed');
 +			updateLastActivityTimestamp();
 +		})
 +	);
@@ -219,7 +227,9 @@ Index: sagemaker-code-editor/vscode/extensions/sagemaker-idle-extension/src/exte
 + */
 +function startPeriodicChecks() {
 +	checkInterval = setInterval(() => {
-+		if (hasBackgroundActivity()) {
++		const activity = hasBackgroundActivity();
++		console.log('[IdleMonitor] Periodic check - background activity:', activity);
++		if (activity) {
 +			updateLastActivityTimestamp();
 +		}
 +	}, 60000); // Check every 60 seconds
@@ -231,9 +241,11 @@ Index: sagemaker-code-editor/vscode/extensions/sagemaker-idle-extension/src/exte
 + */
 +function hasBackgroundActivity(): boolean {
 +	// Check for running tasks
-+	if (vscode.tasks.taskExecutions.length > 0) {
-+		return true;
-+	}
++	const hasActiveTasks = vscode.tasks.taskExecutions.length > 0;
++	console.log('[IdleMonitor] Active tasks:', hasActiveTasks);
++
++	let hasExecutingKernels = false;
++	let hasUnsavedNotebooks = false;
 +
 +	// Check for executing notebook kernels or unsaved work
 +	for (const notebook of vscode.workspace.notebookDocuments) {
@@ -241,16 +253,21 @@ Index: sagemaker-code-editor/vscode/extensions/sagemaker-idle-extension/src/exte
 +		for (const cell of notebook.getCells()) {
 +			if (cell.executionSummary?.executionOrder !== undefined && 
 +				cell.executionSummary.timing?.endTime === undefined) {
-+				return true;
++				hasExecutingKernels = true;
++				break;
 +			}
 +		}
 +		// Check if notebook has unsaved changes
 +		if (notebook.isDirty) {
-+			return true;
++			hasUnsavedNotebooks = true;
 +		}
 +	}
 +
-+	return vscode.workspace.textDocuments.some(doc => doc.isDirty && doc.uri.scheme === 'file');
++	const hasUnsavedText = vscode.workspace.textDocuments.some(doc => doc.isDirty && doc.uri.scheme === 'file');
++
++	console.log('[IdleMonitor] Executing kernels:', hasExecutingKernels, 'Unsaved notebooks:', hasUnsavedNotebooks, 'Unsaved text:', hasUnsavedText);
++
++	return hasActiveTasks || hasExecutingKernels || hasUnsavedNotebooks || hasUnsavedText;
 +}
 +
 +/**
@@ -259,6 +276,7 @@ Index: sagemaker-code-editor/vscode/extensions/sagemaker-idle-extension/src/exte
 + */
 +function updateLastActivityTimestamp() {
 +	const timestamp = new Date().toISOString();
++	console.log('[IdleMonitor] Updating timestamp:', timestamp);
 +	fs.writeFileSync(idleFilePath, timestamp);
 +}
 \ No newline at end of file
@@ -333,11 +351,12 @@ Index: sagemaker-code-editor/vscode/src/vs/server/node/webClientServer.ts
 +			return now.getTime() - mtime < CHECK_INTERVAL;
 +		});
 +
++		console.log('[IdleMonitor] Terminal activity detected:', activityDetected);
 +		if (activityDetected) {
 +			fs.writeFileSync(idleFilePath, now.toISOString());
 +		}
 +	} catch (err) {
-+		console.error('Error checking terminal activity:', err);
++		console.error('[IdleMonitor] Error checking terminal activity:', err);
 +	}
 +}
 +
